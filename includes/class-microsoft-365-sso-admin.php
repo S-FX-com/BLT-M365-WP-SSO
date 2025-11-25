@@ -1,6 +1,6 @@
 <?php
 
-class WP_M365_SSO_Admin
+class M365_SSO_Admin
 {
     public function init()
     {
@@ -21,9 +21,18 @@ class WP_M365_SSO_Admin
 
     public function register_settings()
     {
-        register_setting('m365_sso_options', 'm365_client_id');
-        register_setting('m365_sso_options', 'm365_client_secret');
-        register_setting('m365_sso_options', 'm365_tenant_id');
+        register_setting('m365_sso_options', 'm365_client_id', array(
+            'sanitize_callback' => 'sanitize_text_field',
+            'default' => ''
+        ));
+        register_setting('m365_sso_options', 'm365_client_secret', array(
+            'sanitize_callback' => 'sanitize_text_field',
+            'default' => ''
+        ));
+        register_setting('m365_sso_options', 'm365_tenant_id', array(
+            'sanitize_callback' => 'sanitize_text_field',
+            'default' => ''
+        ));
     }
 
     public function settings_page()

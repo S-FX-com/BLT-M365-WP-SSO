@@ -2,9 +2,9 @@
 
 /**
  * Plugin Name: Single Sign-On with 365
- * Plugin URI: admin.php?page=microsoft-365-sso
+ * Plugin URI: https://s-fx.com/plugins/single-sign-on-with-365/
  * Description: Single Sign-On integration for WordPress with Microsoft 365.
- * Version: 1.0
+ * Version: 1.0.1
  * Author: S-FX.COM
  * Author URI: https://s-fx.com
  * License: GPL-2.0+
@@ -16,14 +16,14 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-require_once plugin_dir_path(__FILE__) . 'includes/class-microsoft-365-sso.php';
+require_once plugin_dir_path(__FILE__) . 'includes/class-microsoft-365sso.php';
 require_once plugin_dir_path(__FILE__) . 'includes/class-microsoft-365-sso-admin.php';
 require_once plugin_dir_path(__FILE__) . 'includes/class-microsoft-365-sso-auth.php';
 
-function wp_m365_sso_init()
+function m365_sso_init()
 {
-    $plugin = new WP_M365_SSO();
+    $plugin = new M365_SSO_Plugin();
     $plugin->run();
 }
 
-wp_m365_sso_init();
+m365_sso_init();

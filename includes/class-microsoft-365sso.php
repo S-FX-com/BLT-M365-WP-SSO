@@ -1,14 +1,14 @@
 <?php
 
-class WP_M365_SSO
+class M365_SSO_Plugin
 {
     private $admin;
     private $auth;
 
     public function __construct()
     {
-        $this->admin = new WP_M365_SSO_Admin();
-        $this->auth = new WP_M365_SSO_Auth();
+        $this->admin = new M365_SSO_Admin();
+        $this->auth = new M365_SSO_Auth();
     }
 
     public function run()
@@ -20,6 +20,6 @@ class WP_M365_SSO
 
     public function enqueue_styles()
     {
-        wp_enqueue_style('microsoft-365-sso-style', plugin_dir_url(__FILE__) . '../css/microsoft-365-sso.css');
+        wp_enqueue_style('microsoft-365-sso-style', plugin_dir_url(__FILE__) . '../css/microsoft-365-sso.css', array(), '1.0.1');
     }
 }

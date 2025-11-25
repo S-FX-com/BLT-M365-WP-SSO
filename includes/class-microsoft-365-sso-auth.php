@@ -1,6 +1,6 @@
 <?php
 
-class WP_M365_SSO_Auth
+class M365_SSO_Auth
 {
     private $client_id;
     private $client_secret;
@@ -64,11 +64,13 @@ class WP_M365_SSO_Auth
             return;
         }
 
-        if (!wp_verify_nonce($_GET['state'], 'm365-auth')) {
+        $state = sanitize_text_field(wp_unslash($_GET['state']));
+        if (!wp_verify_nonce($state, 'm365-auth')) {
             wp_die('Invalid authentication request');
         }
 
-        $token = $this->get_token($_GET['code']);
+        $code = sanitize_text_field(wp_unslash($_GET['code']));
+        $token = $this->get_token($code);
         if (!$token) {
             wp_die('Error obtaining access token');
         }
@@ -164,8 +166,8 @@ class WP_M365_SSO_Auth
         wp_set_current_user($user->ID);
         wp_set_auth_cookie($user->ID);
 
-        $redirect_url = apply_filters('wp_m365_sso_redirect_url', admin_url(), $user);
-		wp_redirect($redirect_url);
+        $redirect_url = apply_filters('m365_sso_redirect_url', admin_url(), $user);
+		wp_safe_redirect($redirect_url);
         exit;
     }
 
@@ -181,7 +183,7 @@ class WP_M365_SSO_Auth
 
         file_put_contents($filepath, base64_decode($photo_data));
 
-        $existing_attachment_id = get_user_meta($user_id, 'profile_photo_id', true);
+        $existing_attachment_id = get_user_meta($user_id, 'm365_sso_profile_photo_id', true);
 
         require_once(ABSPATH . 'wp-admin/includes/image.php');
         require_once(ABSPATH . 'wp-admin/includes/file.php');
@@ -202,7 +204,7 @@ class WP_M365_SSO_Auth
             $attach_data = wp_generate_attachment_metadata($attach_id, $filepath);
             wp_update_attachment_metadata($attach_id, $attach_data);
 
-            update_user_meta($user_id, 'profile_photo_id', $attach_id);
+            update_user_meta($user_id, 'm365_sso_profile_photo_id', $attach_id);
             return $attach_id;
         }
     }
@@ -220,7 +222,7 @@ class WP_M365_SSO_Auth
         }
 
         if ($user) {
-            $profile_photo_id = get_user_meta($user->ID, 'profile_photo_id', true);
+            $profile_photo_id = get_user_meta($user->ID, 'm365_sso_profile_photo_id', true);
             if ($profile_photo_id) {
                 $profile_photo_url = wp_get_attachment_url($profile_photo_id);
                 if ($profile_photo_url) {

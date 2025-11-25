@@ -1,10 +1,10 @@
 === Single Sign-On with 365 ===
 Contributors: s-fx
-Tags: microsoft 365, azure, sso, login, active directory, authentication
+Tags: microsoft 365, azure, sso, login, authentication
 Requires at least: 5.0
-Tested up to: 6.5
+Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.0
+Stable tag: 1.0.1
 License: GPL-2.0+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -47,10 +47,22 @@ Currently, the plugin is optimized for single-site installations.
 
 == Changelog ==
 
+= 1.0.1 =
+* Fixed: Plugin URI header validation
+* Fixed: Added sanitization to all register_setting() calls
+* Fixed: Sanitized and unslashed $_GET variables for security
+* Fixed: Changed wp_redirect() to wp_safe_redirect() for better security
+* Fixed: Added version parameter to wp_enqueue_style()
+* Updated: Changed class prefixes from WP_ to M365_SSO_ to avoid namespace collisions
+* Updated: Tested up to WordPress 6.8
+
 = 1.0 =
 * Initial release of the plugin.
 
 == Upgrade Notice ==
+
+= 1.0.1 =
+Security improvements and WordPress.org compliance fixes. Recommended update for all users.
 
 = 1.0 =
 Initial release
