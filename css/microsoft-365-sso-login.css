@@ -1,0 +1,73 @@
+/**
+ * WordPress login page (wp-login.php) styles.
+ *
+ * @package SingleSignOnWith365
+ */
+
+/* Separator line between standard form and SSO button */
+.m365-sso-separator {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 16px 0 12px;
+    color: #8c8f94;
+    font-size: 13px;
+}
+
+.m365-sso-separator::before,
+.m365-sso-separator::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #c3c4c7;
+}
+
+.m365-sso-separator span {
+    padding: 0 12px;
+    text-transform: lowercase;
+}
+
+/* Login button wrapper */
+.m365-sso-login-wrap {
+    text-align: center;
+    margin: 0 0 8px;
+}
+
+/* SSO button — shared between login page and shortcode */
+.m365-sso-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.5;
+    color: #3c4043;
+    background: #fff;
+    border: 1px solid #dadce0;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    box-sizing: border-box;
+    transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.m365-sso-btn:hover {
+    background: #f7f8f8;
+    border-color: #c3c4c7;
+    color: #1d2327;
+    text-decoration: none;
+}
+
+.m365-sso-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #2271b1;
+    border-color: #2271b1;
+    color: #1d2327;
+}
+
+/* Microsoft four-square icon */
+.m365-sso-icon {
+    flex-shrink: 0;
+}

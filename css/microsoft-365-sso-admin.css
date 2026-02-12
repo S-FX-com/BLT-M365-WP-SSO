@@ -1,0 +1,83 @@
+/**
+ * Admin settings page styles.
+ * Matches the WordPress wp-admin aesthetic.
+ *
+ * @package SingleSignOnWith365
+ */
+
+/* Version label */
+.m365-sso-version {
+    color: #646970;
+    font-size: 13px;
+    margin: -8px 0 12px;
+}
+
+/* Status banner */
+.m365-sso-notice {
+    margin: 12px 0 16px;
+}
+
+/* Tab content area */
+.m365-sso-tab-content {
+    margin-top: 20px;
+}
+
+/* Card container — mirrors WP postbox style */
+.m365-sso-card {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 20px 24px 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.m365-sso-card h2 {
+    margin-top: 0;
+    padding: 0;
+    font-size: 1.3em;
+    line-height: 1.4;
+}
+
+.m365-sso-card h3 {
+    font-size: 1.05em;
+    margin: 1.4em 0 0.5em;
+}
+
+/* Step blocks in setup guide */
+.m365-sso-step {
+    border-left: 3px solid #2271b1;
+    padding: 8px 16px 12px;
+    margin: 16px 0;
+    background: #f6f7f7;
+    border-radius: 0 4px 4px 0;
+}
+
+.m365-sso-step h3 {
+    margin-top: 0;
+    color: #1d2327;
+}
+
+.m365-sso-step ol,
+.m365-sso-step ul {
+    margin-left: 1.5em;
+}
+
+.m365-sso-step li {
+    margin-bottom: 6px;
+}
+
+/* Copyable code box */
+.m365-sso-copy-box {
+    display: inline-block;
+    background: #f0f0f1;
+    border: 1px solid #c3c4c7;
+    border-radius: 3px;
+    padding: 4px 10px;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 13px;
+    color: #1d2327;
+    word-break: break-all;
+    cursor: text;
+    user-select: all;
+}

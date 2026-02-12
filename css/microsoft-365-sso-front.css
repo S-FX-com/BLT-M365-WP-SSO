@@ -1,0 +1,55 @@
+/**
+ * Front-end styles for the [m365_login] shortcode button.
+ *
+ * @package SingleSignOnWith365
+ */
+
+/* Shortcode wrapper */
+.m365-sso-shortcode-wrap {
+    margin: 12px 0;
+}
+
+/* SSO button */
+.m365-sso-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.5;
+    color: #3c4043;
+    background: #fff;
+    border: 1px solid #dadce0;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    box-sizing: border-box;
+    transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.m365-sso-btn:hover {
+    background: #f7f8f8;
+    border-color: #bdc1c6;
+    color: #1d2327;
+    text-decoration: none;
+}
+
+.m365-sso-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #2271b1;
+    border-color: #2271b1;
+    color: #1d2327;
+}
+
+/* Microsoft four-square icon */
+.m365-sso-icon {
+    flex-shrink: 0;
+}
+
+/* Logged-in message */
+.m365-sso-logged-in {
+    color: #646970;
+    font-style: italic;
+}
