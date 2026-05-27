@@ -1,0 +1,31 @@
+#!/bin/sh
+#
+# Auto-bump the plugin version on every commit.
+#
+# Enable once per clone with:
+#   git config core.hooksPath .githooks
+#
+# Skip a single commit with:
+#   BLT_M365_SSO_SKIP_BUMP=1 git commit ...
+
+set -eu
+
+if [ "${BLT_M365_SSO_SKIP_BUMP:-0}" = "1" ]; then
+    exit 0
+fi
+
+GIT_DIR="$(git rev-parse --git-dir)"
+
+# Don't bump during merge or cherry-pick commits.
+if [ -f "$GIT_DIR/MERGE_HEAD" ] || [ -f "$GIT_DIR/CHERRY_PICK_HEAD" ]; then
+    exit 0
+fi
+
+ROOT="$(git rev-parse --show-toplevel)"
+
+NEW="$(sh "$ROOT/bin/bump-version.sh" patch)"
+
+git add "$ROOT/blt-m365-wp-sso.php" "$ROOT/readme.txt"
+
+echo "BLT M365 WP SSO: version bumped to $NEW"
+exit 0
