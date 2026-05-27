@@ -81,3 +81,28 @@
     cursor: text;
     user-select: all;
 }
+
+/* Test Authentication */
+#blt-m365-sso-test-spinner {
+    float: none;
+    margin: 0 0 0 6px;
+    vertical-align: middle;
+}
+
+.m365-sso-test-result {
+    margin-top: 8px;
+}
+
+.m365-sso-test-result .notice {
+    margin: 0;
+}
+
+.m365-sso-test-testing {
+    color: #646970;
+    font-style: italic;
+}
+
+.m365-sso-test-detail {
+    color: #646970;
+    font-size: 12px;
+}

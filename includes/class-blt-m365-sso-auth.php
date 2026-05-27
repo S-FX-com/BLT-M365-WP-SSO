@@ -63,6 +63,145 @@ class BLT_M365_SSO_Auth {
     }
 
     /**
+     * Test the saved Azure credentials without an interactive sign-in.
+     *
+     * Performs a client-credentials token request against the tenant. The only
+     * response that means the client failed to authenticate is "invalid_client";
+     * other Azure errors (such as app-permission notices for the .default scope)
+     * still confirm that the Client ID, Tenant ID, and Client Secret are valid.
+     *
+     * @return array {ok: bool, message: string, detail?: string}
+     */
+    public function test_credentials() {
+        $client_id     = get_option( 'm365_client_id', '' );
+        $client_secret = get_option( 'm365_client_secret', '' );
+        $tenant_id     = get_option( 'm365_tenant_id', '' );
+
+        if ( ! $client_id || ! $client_secret || ! $tenant_id ) {
+            return array(
+                'ok'      => false,
+                'message' => __( 'Please enter and save your Client ID, Client Secret, and Tenant ID first.', 'blt-m365-wp-sso' ),
+            );
+        }
+
+        // 1) Validate the tenant first. The OpenID configuration endpoint is public
+        // and returns HTTP 200 only for a valid, reachable tenant. Checking it here
+        // means a tenant problem cannot be mistaken for a client/secret problem below.
+        $config_url = sprintf(
+            'https://login.microsoftonline.com/%s/v2.0/.well-known/openid-configuration',
+            rawurlencode( $tenant_id )
+        );
+        $config = wp_remote_get( $config_url, array( 'timeout' => 15 ) );
+
+        if ( is_wp_error( $config ) ) {
+            return array(
+                'ok'      => false,
+                'message' => __( 'Could not reach Microsoft. Check this server\'s outbound network access.', 'blt-m365-wp-sso' ),
+                'detail'  => $config->get_error_message(),
+            );
+        }
+
+        if ( 200 !== (int) wp_remote_retrieve_response_code( $config ) ) {
+            return array(
+                'ok'      => false,
+                'message' => __( 'The Directory (Tenant) ID was not found or is not valid. Please check it.', 'blt-m365-wp-sso' ),
+            );
+        }
+
+        // 2) Validate the client and secret with a client-credentials token request.
+        $token_url = sprintf(
+            'https://login.microsoftonline.com/%s/oauth2/v2.0/token',
+            rawurlencode( $tenant_id )
+        );
+
+        $response = wp_remote_post(
+            $token_url,
+            array(
+                'timeout' => 20,
+                'body'    => array(
+                    'client_id'     => $client_id,
+                    'client_secret' => $client_secret,
+                    'grant_type'    => 'client_credentials',
+                    'scope'         => 'https://graph.microsoft.com/.default',
+                ),
+            )
+        );
+
+        if ( is_wp_error( $response ) ) {
+            return array(
+                'ok'      => false,
+                'message' => __( 'Could not reach Microsoft. Check this server\'s outbound network access.', 'blt-m365-wp-sso' ),
+                'detail'  => $response->get_error_message(),
+            );
+        }
+
+        $body = json_decode( wp_remote_retrieve_body( $response ), true );
+
+        if ( ! empty( $body['access_token'] ) ) {
+            return array(
+                'ok'      => true,
+                'message' => __( 'Success! Microsoft accepted your credentials and issued a token.', 'blt-m365-wp-sso' ),
+            );
+        }
+
+        $error = isset( $body['error'] ) ? (string) $body['error'] : '';
+        $desc  = isset( $body['error_description'] ) ? (string) $body['error_description'] : '';
+
+        // "invalid_client" is the definitive signal that the secret is wrong or expired.
+        if ( 'invalid_client' === $error
+            || false !== strpos( $desc, 'AADSTS7000215' )
+            || false !== strpos( $desc, 'AADSTS7000222' )
+            || false !== strpos( $desc, 'AADSTS7000216' ) ) {
+            return array(
+                'ok'      => false,
+                'message' => __( 'The Client Secret is incorrect or has expired. Create a new secret in Azure and save it here.', 'blt-m365-wp-sso' ),
+                'detail'  => $this->first_line( $desc ),
+            );
+        }
+
+        // The application was not found in this (already validated) tenant -> wrong Client ID.
+        if ( false !== strpos( $desc, 'AADSTS700016' ) ) {
+            return array(
+                'ok'      => false,
+                'message' => __( 'The Application (Client) ID was not found in this tenant. Please check it.', 'blt-m365-wp-sso' ),
+                'detail'  => $this->first_line( $desc ),
+            );
+        }
+
+        // The tenant is valid and the client authenticated (no client error above), so
+        // the credentials are correct. Any remaining message is an app-permission notice
+        // for the .default scope, which does not affect interactive Microsoft 365 sign-in.
+        if ( $error ) {
+            return array(
+                'ok'      => true,
+                'message' => __( 'Your Client ID, Tenant ID, and Client Secret are valid. Microsoft also returned an app-permission notice, which does not affect Microsoft 365 user sign-in.', 'blt-m365-wp-sso' ),
+                'detail'  => $this->first_line( $desc ),
+            );
+        }
+
+        return array(
+            'ok'      => false,
+            'message' => __( 'Unexpected response from Microsoft. Please try again.', 'blt-m365-wp-sso' ),
+            'detail'  => 'HTTP ' . wp_remote_retrieve_response_code( $response ),
+        );
+    }
+
+    /**
+     * Return the first line of a (possibly multi-line) string, capped in length.
+     *
+     * @param string $text Text.
+     * @return string
+     */
+    private function first_line( $text ) {
+        $text = trim( (string) $text );
+        if ( '' === $text ) {
+            return '';
+        }
+        $line = strtok( $text, "\r\n" );
+        return ( strlen( $line ) > 300 ) ? substr( $line, 0, 300 ) . '…' : $line;
+    }
+
+    /**
      * Whether the auto-redirect-after-login behaviour is enabled.
      *
      * @return bool

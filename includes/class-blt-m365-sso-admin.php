@@ -30,6 +30,7 @@ class BLT_M365_SSO_Admin {
         add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
         add_action( 'admin_init', array( $this, 'register_settings' ) );
         add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
+        add_action( 'wp_ajax_blt_m365_sso_test_auth', array( $this, 'ajax_test_auth' ) );
     }
 
     /**
@@ -61,6 +62,24 @@ class BLT_M365_SSO_Admin {
             BLT_M365_SSO_PLUGIN_URL . 'css/blt-m365-sso-admin.css',
             array(),
             BLT_M365_SSO_VERSION
+        );
+        wp_enqueue_script(
+            'blt-m365-sso-admin',
+            BLT_M365_SSO_PLUGIN_URL . 'js/blt-m365-sso-admin.js',
+            array(),
+            BLT_M365_SSO_VERSION,
+            true
+        );
+        wp_localize_script(
+            'blt-m365-sso-admin',
+            'bltM365Sso',
+            array(
+                'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+                'action'  => 'blt_m365_sso_test_auth',
+                'nonce'   => wp_create_nonce( 'blt_m365_sso_test_auth' ),
+                'testing' => __( 'Testing connection to Microsoft…', 'blt-m365-wp-sso' ),
+                'failed'  => __( 'The test could not be completed. Please try again.', 'blt-m365-wp-sso' ),
+            )
         );
     }
 
@@ -125,6 +144,28 @@ class BLT_M365_SSO_Admin {
         $value = sanitize_text_field( $value );
         $roles = array_keys( get_editable_roles() );
         return in_array( $value, $roles, true ) ? $value : 'subscriber';
+    }
+
+    /**
+     * AJAX handler: test the saved Azure credentials against Microsoft.
+     */
+    public function ajax_test_auth() {
+        check_ajax_referer( 'blt_m365_sso_test_auth', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => __( 'You are not allowed to do this.', 'blt-m365-wp-sso' ) ), 403 );
+        }
+
+        $result  = ( new BLT_M365_SSO_Auth() )->test_credentials();
+        $payload = array(
+            'message' => $result['message'],
+            'detail'  => isset( $result['detail'] ) ? $result['detail'] : '',
+        );
+
+        if ( ! empty( $result['ok'] ) ) {
+            wp_send_json_success( $payload );
+        }
+        wp_send_json_error( $payload );
     }
 
     /**
@@ -398,6 +439,18 @@ class BLT_M365_SSO_Admin {
                 <?php submit_button( __( 'Save Credentials', 'blt-m365-wp-sso' ) ); ?>
             </div>
         </form>
+
+        <?php if ( $this->is_configured() ) : ?>
+        <div class="m365-sso-card">
+            <h2><?php esc_html_e( 'Test Authentication', 'blt-m365-wp-sso' ); ?></h2>
+            <p><?php esc_html_e( 'Verify that your saved credentials are accepted by Microsoft. This runs a server-side token request against your tenant and changes nothing.', 'blt-m365-wp-sso' ); ?></p>
+            <p>
+                <button type="button" class="button button-secondary" id="blt-m365-sso-test-btn"><?php esc_html_e( 'Test Authentication', 'blt-m365-wp-sso' ); ?></button>
+                <span class="spinner" id="blt-m365-sso-test-spinner"></span>
+            </p>
+            <div id="blt-m365-sso-test-result" class="m365-sso-test-result" role="status" aria-live="polite"></div>
+        </div>
+        <?php endif; ?>
         <?php
     }
 
