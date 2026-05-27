@@ -122,6 +122,10 @@ class BLT_M365_SSO_Admin {
             'sanitize_callback' => 'sanitize_textarea_field',
             'default'           => '',
         ) );
+        register_setting( self::OPTION_GROUP, 'm365_sso_sync_photo', array(
+            'sanitize_callback' => array( $this, 'sanitize_checkbox' ),
+            'default'           => '1',
+        ) );
     }
 
     /**
@@ -534,6 +538,17 @@ class BLT_M365_SSO_Admin {
                                       rows="3" class="large-text code"
                                       placeholder="example.com, contoso.com"><?php echo esc_textarea( get_option( 'm365_sso_allowed_domains', '' ) ); ?></textarea>
                             <p class="description"><?php esc_html_e( 'Optional. Restrict sign-in to these email domains (comma or space separated). Leave empty to allow any account returned by your Azure app.', 'blt-m365-wp-sso' ); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php esc_html_e( 'Sync Profile Photo', 'blt-m365-wp-sso' ); ?></th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="m365_sso_sync_photo" value="1"
+                                    <?php checked( get_option( 'm365_sso_sync_photo', '1' ), '1' ); ?> />
+                                <?php esc_html_e( 'Use the user\'s Microsoft profile photo as their WordPress avatar.', 'blt-m365-wp-sso' ); ?>
+                            </label>
+                            <p class="description"><?php esc_html_e( 'Disable this if sign-in is slow or times out — some hosts process images slowly.', 'blt-m365-wp-sso' ); ?></p>
                         </td>
                     </tr>
                 </table>

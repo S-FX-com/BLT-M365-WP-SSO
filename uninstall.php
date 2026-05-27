@@ -23,6 +23,7 @@ $options = array(
     'm365_sso_default_role',
     'm365_sso_button_text',
     'm365_sso_allowed_domains',
+    'm365_sso_sync_photo',
 );
 
 foreach ( $options as $option ) {
@@ -31,5 +32,6 @@ foreach ( $options as $option ) {
 
 // Remove user meta created by the plugin.
 delete_metadata( 'user', 0, 'm365_sso_profile_photo_id', '', true );
+delete_metadata( 'user', 0, 'm365_sso_profile_photo_url', '', true );
 delete_metadata( 'user', 0, 'm365_sso_user', '', true );
 delete_metadata( 'user', 0, 'm365_sso_oid', '', true );

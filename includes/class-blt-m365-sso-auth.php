@@ -433,21 +433,23 @@ class BLT_M365_SSO_Auth {
             return false;
         }
 
-        // Attempt to fetch the profile photo (non-fatal if it fails).
-        $photo_response = wp_remote_get(
-            'https://graph.microsoft.com/v1.0/me/photo/$value',
-            array(
-                'timeout' => 15,
-                'headers' => array(
-                    'Authorization' => 'Bearer ' . $token,
-                ),
-            )
-        );
+        // Attempt to fetch the profile photo (optional and non-fatal).
+        if ( '1' === get_option( 'm365_sso_sync_photo', '1' ) ) {
+            $photo_response = wp_remote_get(
+                'https://graph.microsoft.com/v1.0/me/photo/$value',
+                array(
+                    'timeout' => 15,
+                    'headers' => array(
+                        'Authorization' => 'Bearer ' . $token,
+                    ),
+                )
+            );
 
-        if ( ! is_wp_error( $photo_response ) && 200 === wp_remote_retrieve_response_code( $photo_response ) ) {
-            $photo_data = wp_remote_retrieve_body( $photo_response );
-            if ( ! empty( $photo_data ) ) {
-                $user_info['profile_photo'] = base64_encode( $photo_data );
+            if ( ! is_wp_error( $photo_response ) && 200 === wp_remote_retrieve_response_code( $photo_response ) ) {
+                $photo_data = wp_remote_retrieve_body( $photo_response );
+                if ( ! empty( $photo_data ) ) {
+                    $user_info['profile_photo'] = base64_encode( $photo_data );
+                }
             }
         }
 
@@ -503,13 +505,13 @@ class BLT_M365_SSO_Auth {
             update_user_meta( $user->ID, 'm365_sso_oid', $oid );
         }
 
-        if ( ! empty( $user_info['profile_photo'] ) ) {
-            $this->save_profile_photo( $user->ID, $user_info['profile_photo'] );
-        }
-
-        // Log the user in.
+        // Log the user in first, so optional extras can never block sign-in.
         wp_set_current_user( $user->ID );
         wp_set_auth_cookie( $user->ID, true );
+
+        if ( ! empty( $user_info['profile_photo'] ) && '1' === get_option( 'm365_sso_sync_photo', '1' ) ) {
+            $this->save_profile_photo( $user->ID, $user_info['profile_photo'] );
+        }
 
         /**
          * Fires after a user successfully signs in via Microsoft 365 SSO.
@@ -625,11 +627,16 @@ class BLT_M365_SSO_Auth {
     }
 
     /**
-     * Save a user's Microsoft profile photo to the media library.
+     * Save a user's Microsoft profile photo as a plain file.
+     *
+     * Deliberately avoids the media library and wp_generate_attachment_metadata():
+     * generating thumbnail sub-sizes through Imagick/GD during the login request can
+     * exceed max_execution_time and break sign-in. The avatar is served at its native
+     * size and scaled by the browser, so no server-side resizing is required.
      *
      * @param int    $user_id    WordPress user ID.
      * @param string $photo_data Base64-encoded photo data.
-     * @return int|false Attachment ID or false.
+     * @return string|false Photo URL or false.
      */
     private function save_profile_photo( $user_id, $photo_data ) {
         if ( empty( $photo_data ) ) {
@@ -641,46 +648,48 @@ class BLT_M365_SSO_Auth {
             return false;
         }
 
-        $upload_dir = wp_upload_dir();
-        $filename   = 'm365-profile-' . absint( $user_id ) . '.jpg';
-        $filepath   = trailingslashit( $upload_dir['path'] ) . $filename;
+        // Cheap validation: reads the image header only, no decode/resize.
+        $info = @getimagesizefromstring( $decoded ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+        if ( false === $info ) {
+            return false;
+        }
 
-        // Use WP_Filesystem for writing.
+        $mime = isset( $info['mime'] ) ? $info['mime'] : 'image/jpeg';
+        $exts = array(
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+            'image/gif'  => 'gif',
+            'image/webp' => 'webp',
+        );
+        $ext = isset( $exts[ $mime ] ) ? $exts[ $mime ] : 'jpg';
+
+        $uploads = wp_upload_dir();
+        if ( ! empty( $uploads['error'] ) ) {
+            return false;
+        }
+
+        $dir = trailingslashit( $uploads['basedir'] ) . 'm365-sso-avatars';
+        if ( ! wp_mkdir_p( $dir ) ) {
+            return false;
+        }
+
+        $filename = 'avatar-' . absint( $user_id ) . '.' . $ext;
+        $filepath = trailingslashit( $dir ) . $filename;
+
         global $wp_filesystem;
         if ( empty( $wp_filesystem ) ) {
             require_once ABSPATH . 'wp-admin/includes/file.php';
             WP_Filesystem();
         }
-        $wp_filesystem->put_contents( $filepath, $decoded, FS_CHMOD_FILE );
 
-        require_once ABSPATH . 'wp-admin/includes/image.php';
-        require_once ABSPATH . 'wp-admin/includes/media.php';
-
-        $existing_id = get_user_meta( $user_id, 'm365_sso_profile_photo_id', true );
-
-        if ( $existing_id ) {
-            wp_update_attachment_metadata(
-                $existing_id,
-                wp_generate_attachment_metadata( $existing_id, $filepath )
-            );
-            return (int) $existing_id;
+        if ( ! $wp_filesystem || ! $wp_filesystem->put_contents( $filepath, $decoded, FS_CHMOD_FILE ) ) {
+            return false;
         }
 
-        $attachment = array(
-            'post_mime_type' => 'image/jpeg',
-            'post_title'     => sanitize_file_name( $filename ),
-            'post_content'   => '',
-            'post_status'    => 'inherit',
-        );
+        $url = trailingslashit( $uploads['baseurl'] ) . 'm365-sso-avatars/' . $filename;
+        update_user_meta( $user_id, 'm365_sso_profile_photo_url', $url );
 
-        $attach_id = wp_insert_attachment( $attachment, $filepath );
-        if ( ! is_wp_error( $attach_id ) ) {
-            wp_update_attachment_metadata( $attach_id, wp_generate_attachment_metadata( $attach_id, $filepath ) );
-            update_user_meta( $user_id, 'm365_sso_profile_photo_id', $attach_id );
-            return $attach_id;
-        }
-
-        return false;
+        return $url;
     }
 
     /**
@@ -708,12 +717,7 @@ class BLT_M365_SSO_Auth {
             return $avatar;
         }
 
-        $photo_id = get_user_meta( $user->ID, 'm365_sso_profile_photo_id', true );
-        if ( ! $photo_id ) {
-            return $avatar;
-        }
-
-        $photo_url = wp_get_attachment_url( $photo_id );
+        $photo_url = get_user_meta( $user->ID, 'm365_sso_profile_photo_url', true );
         if ( ! $photo_url ) {
             return $avatar;
         }
