@@ -4,7 +4,7 @@ Tags: microsoft 365, azure, entra, sso, login
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 3.1.1
+Stable tag: 3.1.2
 License: GPL-2.0+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -78,6 +78,10 @@ Enable it once per clone:
 While the updater tracks the `main` branch it prefers GitHub Releases or tags if any exist, and otherwise reads the `Version:` header on the branch. For commit-driven updates, do not publish Releases/tags; for release-driven updates, publish a GitHub Release per version.
 
 == Changelog ==
+
+= 3.1.2 =
+* Fixed: Profile photo sync no longer generates media-library thumbnails during login. Generating image sub-sizes via Imagick/GD could exceed PHP's max_execution_time and break sign-in on some hosts. The photo is now stored as a single file and served at native size.
+* New: "Sync Profile Photo" toggle on the Options tab to disable photo import entirely.
 
 = 3.1.1 =
 * Improved: Sign-in failures now report the actual cause instead of a generic message — distinguishing a blocked outbound connection to Microsoft from an error returned by Microsoft (including the AADSTS code), which makes Cloudflare/firewall and redirect-URI issues far easier to diagnose.

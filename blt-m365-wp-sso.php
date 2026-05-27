@@ -3,7 +3,7 @@
  * Plugin Name: BLT M365 WP SSO
  * Plugin URI: https://s-fx.com/plugins/blt-m365-wp-sso/
  * Description: Single Sign-On for WordPress with Microsoft 365 / Entra ID (Azure AD). One-click OAuth2 login, auto-inserted login button, shortcode, and self-updating from GitHub.
- * Version: 3.1.1
+ * Version: 3.1.2
  * Author: S-FX.COM
  * Author URI: https://s-fx.com
  * License: GPL-2.0+
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'BLT_M365_SSO_VERSION', '3.1.1' );
+define( 'BLT_M365_SSO_VERSION', '3.1.2' );
 define( 'BLT_M365_SSO_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'BLT_M365_SSO_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'BLT_M365_SSO_PLUGIN_FILE', __FILE__ );
@@ -53,6 +53,7 @@ function blt_m365_sso_activate() {
         'm365_sso_create_users'  => '1',
         'm365_sso_default_role'  => 'subscriber',
         'm365_sso_button_text'   => 'Login with Microsoft 365',
+        'm365_sso_sync_photo'    => '1',
     );
 
     foreach ( $defaults as $option => $value ) {
