@@ -23,6 +23,9 @@ class BLT_M365_SSO_Auth {
     /** @var string */
     private $tenant_id;
 
+    /** @var string Human-readable reason for the most recent token failure. */
+    private $last_error = '';
+
     /** OAuth scopes requested from Microsoft. */
     const SCOPE = 'openid email profile https://graph.microsoft.com/User.Read';
 
@@ -324,7 +327,10 @@ class BLT_M365_SSO_Auth {
         $token = $this->exchange_code_for_token( $code );
 
         if ( ! $token ) {
-            $this->fail( __( 'Unable to obtain an access token from Microsoft. Please verify your Azure AD credentials.', 'blt-m365-wp-sso' ), 500 );
+            $message = $this->last_error
+                ? $this->last_error
+                : __( 'Unable to obtain an access token from Microsoft. Please verify your Azure AD credentials.', 'blt-m365-wp-sso' );
+            $this->fail( $message, 502 );
         }
 
         $user_info = $this->fetch_user_info( $token );
@@ -349,6 +355,8 @@ class BLT_M365_SSO_Auth {
      * @return string|false Access token or false on failure.
      */
     private function exchange_code_for_token( $code ) {
+        $this->last_error = '';
+
         $token_url = sprintf(
             'https://login.microsoftonline.com/%s/oauth2/v2.0/token',
             rawurlencode( $this->tenant_id )
@@ -370,7 +378,8 @@ class BLT_M365_SSO_Auth {
         );
 
         if ( is_wp_error( $response ) ) {
-            $this->log( 'Token request failed: ' . $response->get_error_message() );
+            $this->last_error = __( 'Could not connect to Microsoft. The website server may be blocking outbound connections to login.microsoftonline.com.', 'blt-m365-wp-sso' );
+            $this->log( 'Token request connection error: ' . $response->get_error_message() );
             return false;
         }
 
@@ -379,11 +388,21 @@ class BLT_M365_SSO_Auth {
 
         if ( $status < 200 || $status >= 300 ) {
             $detail = isset( $body['error_description'] ) ? $body['error_description'] : wp_remote_retrieve_body( $response );
+            $this->last_error = sprintf(
+                /* translators: %s: error message returned by Microsoft. */
+                __( 'Microsoft rejected the sign-in request: %s', 'blt-m365-wp-sso' ),
+                $this->first_line( $detail )
+            );
             $this->log( 'Token endpoint returned HTTP ' . $status . ': ' . $detail );
             return false;
         }
 
-        return isset( $body['access_token'] ) ? $body['access_token'] : false;
+        if ( empty( $body['access_token'] ) ) {
+            $this->last_error = __( 'Microsoft did not return an access token.', 'blt-m365-wp-sso' );
+            return false;
+        }
+
+        return $body['access_token'];
     }
 
     /**
