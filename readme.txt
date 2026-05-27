@@ -4,7 +4,7 @@ Tags: microsoft 365, azure, entra, sso, login
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 3.0.0
+Stable tag: 3.0.1
 License: GPL-2.0+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -79,6 +79,9 @@ While the updater tracks the `main` branch it prefers GitHub Releases or tags if
 
 == Changelog ==
 
+= 3.0.1 =
+* Fixed: Saving one settings tab no longer clears the others. Each tab now uses its own settings group, so the Credentials, Options, and Updates forms no longer overwrite each other's values.
+
 = 3.0.0 =
 * Renamed to **BLT M365 WP SSO**.
 * New: Self-updating from GitHub via the Plugin Update Checker library, with an Updates tab and optional private-repo token.
@@ -113,6 +116,9 @@ While the updater tracks the `main` branch it prefers GitHub Releases or tags if
 * Initial release.
 
 == Upgrade Notice ==
+
+= 3.0.1 =
+Fixes settings being cleared when switching between settings tabs.
 
 = 3.0.0 =
 Renamed to BLT M365 WP SSO. Adds GitHub self-updating, automatic version bumping, an auto-inserted login button, allowed-domain restrictions, and stronger account matching. Recommended for all users.
