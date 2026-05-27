@@ -11,9 +11,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class BLT_M365_SSO_Admin {
 
-    /** Settings group and admin page slug. */
-    const PAGE_SLUG      = 'blt-m365-wp-sso';
-    const OPTION_GROUP   = 'm365_sso_options';
+    /**
+     * Admin page slug and per-form settings groups.
+     *
+     * Each tab is a separate form, so each has its own settings group. A shared
+     * group would cause options.php to null out the fields that are not present
+     * in the submitted form, wiping the other tabs' data.
+     */
+    const PAGE_SLUG          = 'blt-m365-wp-sso';
+    const GROUP_CREDENTIALS  = 'm365_sso_credentials';
+    const OPTION_GROUP       = 'm365_sso_options';
+    const GROUP_UPDATES      = 'm365_sso_updates';
 
     /** @var string Current settings tab. */
     private $active_tab = 'setup';
@@ -63,12 +71,12 @@ class BLT_M365_SSO_Admin {
         $text = array( 'sanitize_callback' => 'sanitize_text_field', 'default' => '' );
 
         // Azure credentials.
-        register_setting( self::OPTION_GROUP, 'm365_client_id', $text );
-        register_setting( self::OPTION_GROUP, 'm365_client_secret', $text );
-        register_setting( self::OPTION_GROUP, 'm365_tenant_id', $text );
+        register_setting( self::GROUP_CREDENTIALS, 'm365_client_id', $text );
+        register_setting( self::GROUP_CREDENTIALS, 'm365_client_secret', $text );
+        register_setting( self::GROUP_CREDENTIALS, 'm365_tenant_id', $text );
 
         // Update source.
-        register_setting( self::OPTION_GROUP, 'm365_github_token', $text );
+        register_setting( self::GROUP_UPDATES, 'm365_github_token', $text );
 
         // Behaviour options.
         register_setting( self::OPTION_GROUP, 'm365_sso_add_to_login', array(
@@ -338,7 +346,7 @@ class BLT_M365_SSO_Admin {
         $redirect_uri = BLT_M365_SSO_Auth::get_redirect_uri();
         ?>
         <form method="post" action="options.php">
-            <?php settings_fields( self::OPTION_GROUP ); ?>
+            <?php settings_fields( self::GROUP_CREDENTIALS ); ?>
 
             <div class="m365-sso-card">
                 <h2><?php esc_html_e( 'Azure AD Credentials', 'blt-m365-wp-sso' ); ?></h2>
@@ -524,7 +532,7 @@ class BLT_M365_SSO_Admin {
         $token_constant = $updater->token_is_constant();
         ?>
         <form method="post" action="options.php">
-            <?php settings_fields( self::OPTION_GROUP ); ?>
+            <?php settings_fields( self::GROUP_UPDATES ); ?>
 
             <div class="m365-sso-card">
                 <h2><?php esc_html_e( 'Automatic Updates', 'blt-m365-wp-sso' ); ?></h2>

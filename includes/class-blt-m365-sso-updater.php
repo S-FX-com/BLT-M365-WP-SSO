@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class BLT_M365_SSO_Updater {
 
     /** Default GitHub repository to check for updates. */
-    const DEFAULT_REPO = 'https://github.com/s-fx-com/obie_365_sso-wp_plugin/';
+    const DEFAULT_REPO = 'https://github.com/S-FX-com/BLT-M365-WP-SSO/';
 
     /** Default branch that holds the production-ready release. */
     const DEFAULT_BRANCH = 'main';
