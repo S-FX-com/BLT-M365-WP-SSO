@@ -4,7 +4,7 @@ Tags: microsoft 365, azure, entra, sso, login
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 3.0.2
+Stable tag: 3.1.1
 License: GPL-2.0+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -78,6 +78,12 @@ Enable it once per clone:
 While the updater tracks the `main` branch it prefers GitHub Releases or tags if any exist, and otherwise reads the `Version:` header on the branch. For commit-driven updates, do not publish Releases/tags; for release-driven updates, publish a GitHub Release per version.
 
 == Changelog ==
+
+= 3.1.1 =
+* Improved: Sign-in failures now report the actual cause instead of a generic message — distinguishing a blocked outbound connection to Microsoft from an error returned by Microsoft (including the AADSTS code), which makes Cloudflare/firewall and redirect-URI issues far easier to diagnose.
+
+= 3.1.0 =
+* New: "Test Authentication" button on the Azure Credentials tab. It validates the tenant (via the OpenID configuration) and the Client ID/Secret (via a client-credentials token request) server-side, without an interactive sign-in, and reports a clear pass/fail.
 
 = 3.0.2 =
 * Updated: Point the update checker at the renamed GitHub repository (S-FX-com/BLT-M365-WP-SSO). Override with the `blt_m365_sso_update_repo` filter if needed.
