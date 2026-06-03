@@ -41,6 +41,7 @@ class BLT_M365_SSO_Auth {
         // Conditionally add the login button to wp-login.php.
         if ( '1' === get_option( 'm365_sso_add_to_login', '1' ) ) {
             add_action( 'login_form', array( $this, 'render_login_button' ) );
+            add_action( 'login_init', array( $this, 'send_no_store_headers' ) );
         }
 
         // Avatar override.
@@ -247,9 +248,25 @@ class BLT_M365_SSO_Auth {
             'response_mode' => 'query',
             'scope'         => self::SCOPE,
             'state'         => $state,
+            // Always render Microsoft's account picker so stale interactive
+            // sign-in state can't produce AADSTS90014 at /SAS/ProcessAuth.
+            'prompt'        => 'select_account',
         );
 
         return $base_url . '?' . http_build_query( $params, '', '&', PHP_QUERY_RFC3986 );
+    }
+
+    /**
+     * Send no-store headers on wp-login.php so the page is never restored from
+     * bfcache. A restored login page would carry a stale state nonce on the
+     * M365 button's href, producing a failed sign-in on the next click.
+     */
+    public function send_no_store_headers() {
+        if ( headers_sent() ) {
+            return;
+        }
+        header( 'Cache-Control: no-store, no-cache, must-revalidate, max-age=0' );
+        header( 'Pragma: no-cache' );
     }
 
     /**
@@ -319,8 +336,27 @@ class BLT_M365_SSO_Auth {
 
         // Surface a provider error (e.g. consent declined) instead of failing silently.
         if ( isset( $_GET['error'] ) ) {
-            $this->log( 'OAuth error: ' . sanitize_text_field( wp_unslash( $_GET['error'] ) ) );
-            $this->fail( __( 'Microsoft returned an error during sign-in. Please try again or contact your administrator.', 'blt-m365-wp-sso' ), 400 );
+            $error_code = sanitize_text_field( wp_unslash( $_GET['error'] ) );
+            $error_desc = isset( $_GET['error_description'] )
+                ? sanitize_text_field( wp_unslash( $_GET['error_description'] ) )
+                : '';
+
+            $aadsts = '';
+            if ( $error_desc && preg_match( '/AADSTS\d+/', $error_desc, $m ) ) {
+                $aadsts = $m[0];
+            }
+
+            $this->log( 'OAuth error: ' . $error_code . ( $aadsts ? ' (' . $aadsts . ')' : '' ) . ( $error_desc ? ' - ' . $error_desc : '' ) );
+
+            $detail = $aadsts ? ' (' . $aadsts . ')' : '';
+            $this->fail(
+                sprintf(
+                    /* translators: %s: AADSTS error code in parentheses, e.g. " (AADSTS90014)". May be empty. */
+                    __( 'Microsoft returned an error during sign-in%s. Please try again or contact your administrator.', 'blt-m365-wp-sso' ),
+                    $detail
+                ),
+                400
+            );
         }
 
         $code  = sanitize_text_field( wp_unslash( $_GET['code'] ) );
