@@ -4,7 +4,7 @@ Tags: microsoft 365, azure, entra, sso, login
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 3.1.2
+Stable tag: 3.1.3
 License: GPL-2.0+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -78,6 +78,11 @@ Enable it once per clone:
 While the updater tracks the `main` branch it prefers GitHub Releases or tags if any exist, and otherwise reads the `Version:` header on the branch. For commit-driven updates, do not publish Releases/tags; for release-driven updates, publish a GitHub Release per version.
 
 == Changelog ==
+
+= 3.1.3 =
+* Improved: The authorize request now sends `prompt=select_account`, so Microsoft always renders a fresh account picker. This avoids AADSTS90014 ("missing 'request' field") failures caused by stale interactive sign-in state in the browser.
+* Improved: Sign-in errors returned by Microsoft now include the AADSTS code (e.g. "(AADSTS90014)") on the error page, making support triage faster. The full error description is still recorded in the debug log when `WP_DEBUG` is enabled.
+* Improved: `wp-login.php` is sent with `Cache-Control: no-store` when the M365 button is enabled, preventing browsers from restoring a stale login page (and a stale state nonce) via bfcache after a back-button navigation.
 
 = 3.1.2 =
 * Fixed: Profile photo sync no longer generates media-library thumbnails during login. Generating image sub-sizes via Imagick/GD could exceed PHP's max_execution_time and break sign-in on some hosts. The photo is now stored as a single file and served at native size.
