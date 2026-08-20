@@ -28,6 +28,7 @@ class BLT_M365_SSO_Admin {
 
     public function init() {
         add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
+        add_action( 'admin_head', array( $this, 'print_menu_icon_style' ) );
         add_action( 'admin_init', array( $this, 'register_settings' ) );
         add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
         add_action( 'wp_ajax_blt_m365_sso_test_auth', array( $this, 'ajax_test_auth' ) );
@@ -43,9 +44,19 @@ class BLT_M365_SSO_Admin {
             'manage_options',
             self::PAGE_SLUG,
             array( $this, 'render_settings_page' ),
-            'dashicons-lock',
+            BLT_Family_Brand::menu_icon( BLT_M365_SSO_PLUGIN_DIR ),
             80
         );
+    }
+
+    /**
+     * Brighten the menu mark on hover and while the section is open.
+     *
+     * WordPress paints an SVG icon_url as a background image and never
+     * recolours it, so this restores the lit state a dashicon gets for free.
+     */
+    public function print_menu_icon_style() {
+        BLT_Family_Brand::print_menu_icon_style( self::PAGE_SLUG );
     }
 
     /**
@@ -58,9 +69,15 @@ class BLT_M365_SSO_Admin {
             return;
         }
         wp_enqueue_style(
+            'blt-m365-wp-sso-design-system',
+            BLT_M365_SSO_PLUGIN_URL . 'assets/css/blt-design-system.css',
+            array(),
+            BLT_M365_SSO_VERSION
+        );
+        wp_enqueue_style(
             'blt-m365-sso-admin',
             BLT_M365_SSO_PLUGIN_URL . 'css/blt-m365-sso-admin.css',
-            array(),
+            array( 'blt-m365-wp-sso-design-system' ),
             BLT_M365_SSO_VERSION
         );
         wp_enqueue_script(
@@ -178,9 +195,10 @@ class BLT_M365_SSO_Admin {
      * @return bool
      */
     private function is_configured() {
-        return get_option( 'm365_client_id' )
-            && get_option( 'm365_client_secret' )
-            && get_option( 'm365_tenant_id' );
+        // Through Auth, not the options directly: the credentials may resolve
+        // from the shared BLT family store, and this screen must agree with the
+        // sign-in path about whether the plugin is configured.
+        return BLT_M365_SSO_Auth::credentials_configured();
     }
 
     /**
@@ -202,21 +220,36 @@ class BLT_M365_SSO_Admin {
             'updates'     => __( 'Updates', 'blt-m365-wp-sso' ),
         );
         ?>
-        <div class="wrap m365-sso-wrap">
-            <h1><?php esc_html_e( 'BLT M365 WP SSO', 'blt-m365-wp-sso' ); ?></h1>
-            <p class="m365-sso-version">
-                <?php
-                /* translators: %s: plugin version number. */
-                echo esc_html( sprintf( __( 'Version %s', 'blt-m365-wp-sso' ), BLT_M365_SSO_VERSION ) );
-                ?>
-            </p>
+        <div class="wrap blt-ui m365-sso-wrap">
+            <div class="blt-admin-page-header">
+                <h1>
+                    <?php
+                    // Pre-built, KSES-filtered markup from the shared brand class.
+                    echo BLT_Family_Brand::inline_mark( BLT_M365_SSO_PLUGIN_DIR ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                    ?>
+                    <?php esc_html_e( 'BLT M365 WP SSO', 'blt-m365-wp-sso' ); ?>
+                    <span class="blt-admin-page-header-sub">
+                        <?php
+                        /* translators: %s: plugin version number. */
+                        echo esc_html( sprintf( __( 'Version %s', 'blt-m365-wp-sso' ), BLT_M365_SSO_VERSION ) );
+                        ?>
+                    </span>
+                </h1>
+                <div class="blt-admin-page-actions">
+                    <?php if ( $this->is_configured() ) : ?>
+                        <span class="blt-badge blt-badge-on"><?php esc_html_e( 'Connected', 'blt-m365-wp-sso' ); ?></span>
+                    <?php else : ?>
+                        <span class="blt-badge blt-badge-off"><?php esc_html_e( 'Not Configured', 'blt-m365-wp-sso' ); ?></span>
+                    <?php endif; ?>
+                </div>
+            </div>
 
             <?php $this->render_status_banner(); ?>
 
-            <nav class="nav-tab-wrapper">
+            <nav class="blt-settings-tabs">
                 <?php foreach ( $tabs as $slug => $label ) : ?>
                     <a href="<?php echo esc_url( $this->tab_url( $slug ) ); ?>"
-                       class="nav-tab <?php echo $slug === $this->active_tab ? 'nav-tab-active' : ''; ?>">
+                       class="blt-settings-tab <?php echo $slug === $this->active_tab ? 'is-active' : ''; ?>">
                         <?php echo esc_html( $label ); ?>
                     </a>
                 <?php endforeach; ?>
@@ -263,16 +296,16 @@ class BLT_M365_SSO_Admin {
     private function render_status_banner() {
         if ( $this->is_configured() ) {
             ?>
-            <div class="notice notice-success inline m365-sso-notice">
-                <p><strong><?php esc_html_e( 'Status: Connected', 'blt-m365-wp-sso' ); ?></strong> &mdash;
-                <?php esc_html_e( 'Your Azure AD credentials are configured. Microsoft 365 SSO is active.', 'blt-m365-wp-sso' ); ?></p>
+            <div class="blt-callout">
+                <strong><?php esc_html_e( 'Status: Connected', 'blt-m365-wp-sso' ); ?></strong>
+                <span><?php esc_html_e( 'Your Azure AD credentials are configured. Microsoft 365 SSO is active.', 'blt-m365-wp-sso' ); ?></span>
             </div>
             <?php
         } else {
             ?>
-            <div class="notice notice-warning inline m365-sso-notice">
-                <p><strong><?php esc_html_e( 'Status: Not Configured', 'blt-m365-wp-sso' ); ?></strong> &mdash;
-                <?php esc_html_e( 'Please complete the Setup Guide and enter your Azure AD credentials to enable SSO.', 'blt-m365-wp-sso' ); ?></p>
+            <div class="blt-callout">
+                <strong><?php esc_html_e( 'Status: Not Configured', 'blt-m365-wp-sso' ); ?></strong>
+                <span><?php esc_html_e( 'Please complete the Setup Guide and enter your Azure AD credentials to enable SSO.', 'blt-m365-wp-sso' ); ?></span>
             </div>
             <?php
         }
@@ -284,19 +317,26 @@ class BLT_M365_SSO_Admin {
     private function render_setup_tab() {
         $redirect_uri = BLT_M365_SSO_Auth::get_redirect_uri();
         ?>
-        <div class="m365-sso-card">
-            <h2><?php esc_html_e( 'Getting Started', 'blt-m365-wp-sso' ); ?></h2>
-            <p><?php esc_html_e( 'BLT M365 WP SSO lets your users sign in to WordPress with their Microsoft 365 / Entra ID (Azure AD) account. Setup takes about five minutes:', 'blt-m365-wp-sso' ); ?></p>
+        <div class="blt-card">
+            <div class="blt-card-header">
+                <h2><?php esc_html_e( 'Getting Started', 'blt-m365-wp-sso' ); ?></h2>
+                <p><?php esc_html_e( 'BLT M365 WP SSO lets your users sign in to WordPress with their Microsoft 365 / Entra ID (Azure AD) account. Setup takes about five minutes:', 'blt-m365-wp-sso' ); ?></p>
+            </div>
+            <div class="blt-card-body">
             <ol class="m365-sso-overview">
                 <li><?php esc_html_e( 'Register an application in the Azure portal (Steps 1-5 below).', 'blt-m365-wp-sso' ); ?></li>
                 <li><?php esc_html_e( 'Paste the Client ID, Client Secret, and Tenant ID into the Azure Credentials tab.', 'blt-m365-wp-sso' ); ?></li>
                 <li><?php esc_html_e( 'Choose your login behaviour in the Options tab (the login button is added automatically by default).', 'blt-m365-wp-sso' ); ?></li>
                 <li><?php esc_html_e( 'Optionally drop the [m365_login] shortcode anywhere on your site.', 'blt-m365-wp-sso' ); ?></li>
             </ol>
+            </div>
         </div>
 
-        <div class="m365-sso-card">
-            <h2><?php esc_html_e( 'Azure AD App Registration Guide', 'blt-m365-wp-sso' ); ?></h2>
+        <div class="blt-card">
+            <div class="blt-card-header">
+                <h2><?php esc_html_e( 'Azure AD App Registration Guide', 'blt-m365-wp-sso' ); ?></h2>
+            </div>
+            <div class="blt-card-body">
 
             <div class="m365-sso-step">
                 <h3><?php esc_html_e( 'Step 1: Open the Azure Portal', 'blt-m365-wp-sso' ); ?></h3>
@@ -314,7 +354,7 @@ class BLT_M365_SSO_Admin {
                     <li><?php esc_html_e( 'Under "Supported account types", choose "Accounts in this organizational directory only" for single-tenant, or a multi-tenant option if needed.', 'blt-m365-wp-sso' ); ?></li>
                     <li>
                         <?php esc_html_e( 'Under "Redirect URI", select "Web" and enter exactly:', 'blt-m365-wp-sso' ); ?>
-                        <code class="m365-sso-copy-box"><?php echo esc_html( $redirect_uri ); ?></code>
+                        <code class="blt-redirect-uri"><?php echo esc_html( $redirect_uri ); ?></code>
                     </li>
                     <li><?php esc_html_e( 'Click "Register".', 'blt-m365-wp-sso' ); ?></li>
                 </ol>
@@ -359,11 +399,15 @@ class BLT_M365_SSO_Admin {
                     <?php esc_html_e( 'Go to Azure Credentials', 'blt-m365-wp-sso' ); ?>
                 </a></p>
             </div>
+            </div>
         </div>
 
-        <div class="m365-sso-card">
-            <h2><?php esc_html_e( 'Adding the Login Button', 'blt-m365-wp-sso' ); ?></h2>
-            <p><?php esc_html_e( 'There are two ways to show the "Login with Microsoft 365" button:', 'blt-m365-wp-sso' ); ?></p>
+        <div class="blt-card">
+            <div class="blt-card-header">
+                <h2><?php esc_html_e( 'Adding the Login Button', 'blt-m365-wp-sso' ); ?></h2>
+                <p><?php esc_html_e( 'There are two ways to show the "Login with Microsoft 365" button:', 'blt-m365-wp-sso' ); ?></p>
+            </div>
+            <div class="blt-card-body">
             <ul class="m365-sso-bullets">
                 <li>
                     <strong><?php esc_html_e( 'On the WordPress login screen (automatic):', 'blt-m365-wp-sso' ); ?></strong>
@@ -372,7 +416,7 @@ class BLT_M365_SSO_Admin {
                 <li>
                     <strong><?php esc_html_e( 'Anywhere else (shortcode):', 'blt-m365-wp-sso' ); ?></strong>
                     <?php esc_html_e( 'place', 'blt-m365-wp-sso' ); ?>
-                    <code class="m365-sso-copy-box">[m365_login]</code>
+                    <code class="blt-chip">[m365_login]</code>
                     <?php esc_html_e( 'on any page, post, or widget. See the Shortcode tab for all options.', 'blt-m365-wp-sso' ); ?>
                 </li>
             </ul>
@@ -380,6 +424,7 @@ class BLT_M365_SSO_Admin {
                 <a href="<?php echo esc_url( $this->tab_url( 'options' ) ); ?>" class="button button-secondary"><?php esc_html_e( 'Options', 'blt-m365-wp-sso' ); ?></a>
                 <a href="<?php echo esc_url( $this->tab_url( 'shortcode' ) ); ?>" class="button button-secondary"><?php esc_html_e( 'Shortcode', 'blt-m365-wp-sso' ); ?></a>
             </p>
+            </div>
         </div>
         <?php
     }
@@ -393,66 +438,75 @@ class BLT_M365_SSO_Admin {
         <form method="post" action="options.php">
             <?php settings_fields( self::GROUP_CREDENTIALS ); ?>
 
-            <div class="m365-sso-card">
-                <h2><?php esc_html_e( 'Azure AD Credentials', 'blt-m365-wp-sso' ); ?></h2>
-                <p><?php esc_html_e( 'Enter the credentials from your Azure AD app registration. See the Setup Guide tab for instructions.', 'blt-m365-wp-sso' ); ?></p>
+            <div class="blt-card">
+                <div class="blt-card-header">
+                    <h2><?php esc_html_e( 'Azure AD Credentials', 'blt-m365-wp-sso' ); ?></h2>
+                    <p><?php esc_html_e( 'Enter the credentials from your Azure AD app registration. See the Setup Guide tab for instructions.', 'blt-m365-wp-sso' ); ?></p>
+                </div>
+                <div class="blt-card-body">
+                    <?php
+                    // These fields deliberately show this plugin's own options and
+                    // nothing else. Rendering a value inherited from the shared BLT
+                    // store would copy it into this plugin's options on the next
+                    // save, and the shared layer never writes to a plugin's options.
+                    ?>
 
-                <table class="form-table" role="presentation">
-                    <tr>
-                        <th scope="row">
-                            <label for="m365_client_id"><?php esc_html_e( 'Application (Client) ID', 'blt-m365-wp-sso' ); ?></label>
-                        </th>
-                        <td>
+                    <div class="blt-field">
+                        <div class="blt-field-label"><label for="m365_client_id"><?php esc_html_e( 'Application (Client) ID', 'blt-m365-wp-sso' ); ?></label></div>
+                        <div>
                             <input type="text" id="m365_client_id" name="m365_client_id"
                                    value="<?php echo esc_attr( get_option( 'm365_client_id' ) ); ?>"
                                    class="regular-text" autocomplete="off" />
-                            <p class="description"><?php esc_html_e( 'From the Azure app "Overview" page: "Application (client) ID".', 'blt-m365-wp-sso' ); ?></p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">
-                            <label for="m365_client_secret"><?php esc_html_e( 'Client Secret', 'blt-m365-wp-sso' ); ?></label>
-                        </th>
-                        <td>
+                            <p class="blt-field-desc"><?php esc_html_e( 'From the Azure app "Overview" page: "Application (client) ID".', 'blt-m365-wp-sso' ); ?></p>
+                        </div>
+                    </div>
+                    <div class="blt-field">
+                        <div class="blt-field-label"><label for="m365_client_secret"><?php esc_html_e( 'Client Secret', 'blt-m365-wp-sso' ); ?></label></div>
+                        <div>
                             <input type="password" id="m365_client_secret" name="m365_client_secret"
                                    value="<?php echo esc_attr( get_option( 'm365_client_secret' ) ); ?>"
                                    class="regular-text" autocomplete="off" />
-                            <p class="description"><?php esc_html_e( 'From "Certificates & secrets". Copy the secret "Value", not the "Secret ID".', 'blt-m365-wp-sso' ); ?></p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">
-                            <label for="m365_tenant_id"><?php esc_html_e( 'Directory (Tenant) ID', 'blt-m365-wp-sso' ); ?></label>
-                        </th>
-                        <td>
+                            <p class="blt-field-desc"><?php esc_html_e( 'From "Certificates & secrets". Copy the secret "Value", not the "Secret ID".', 'blt-m365-wp-sso' ); ?></p>
+                        </div>
+                    </div>
+                    <div class="blt-field">
+                        <div class="blt-field-label"><label for="m365_tenant_id"><?php esc_html_e( 'Directory (Tenant) ID', 'blt-m365-wp-sso' ); ?></label></div>
+                        <div>
                             <input type="text" id="m365_tenant_id" name="m365_tenant_id"
                                    value="<?php echo esc_attr( get_option( 'm365_tenant_id' ) ); ?>"
                                    class="regular-text" autocomplete="off" />
-                            <p class="description"><?php esc_html_e( 'From the Azure app "Overview" page: "Directory (tenant) ID".', 'blt-m365-wp-sso' ); ?></p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><?php esc_html_e( 'Redirect URI', 'blt-m365-wp-sso' ); ?></th>
-                        <td>
-                            <code class="m365-sso-copy-box"><?php echo esc_html( $redirect_uri ); ?></code>
-                            <p class="description"><?php esc_html_e( 'This must match the Redirect URI configured in your Azure app registration exactly.', 'blt-m365-wp-sso' ); ?></p>
-                        </td>
-                    </tr>
-                </table>
+                            <p class="blt-field-desc"><?php esc_html_e( 'From the Azure app "Overview" page: "Directory (tenant) ID".', 'blt-m365-wp-sso' ); ?></p>
+                        </div>
+                    </div>
+                    <div class="blt-field">
+                        <div class="blt-field-label"><?php esc_html_e( 'Redirect URI', 'blt-m365-wp-sso' ); ?></div>
+                        <div>
+                            <code class="blt-redirect-uri"><?php echo esc_html( $redirect_uri ); ?></code>
+                            <p class="blt-field-desc"><?php esc_html_e( 'This must match the Redirect URI configured in your Azure app registration exactly.', 'blt-m365-wp-sso' ); ?></p>
+                        </div>
+                    </div>
 
-                <?php submit_button( __( 'Save Credentials', 'blt-m365-wp-sso' ) ); ?>
+                </div>
+            </div>
+
+            <div class="blt-settings-footer">
+                <?php submit_button( __( 'Save Credentials', 'blt-m365-wp-sso' ), 'primary blt-save-button', 'submit', false ); ?>
             </div>
         </form>
 
         <?php if ( $this->is_configured() ) : ?>
-        <div class="m365-sso-card">
-            <h2><?php esc_html_e( 'Test Authentication', 'blt-m365-wp-sso' ); ?></h2>
-            <p><?php esc_html_e( 'Verify that your saved credentials are accepted by Microsoft. This runs a server-side token request against your tenant and changes nothing.', 'blt-m365-wp-sso' ); ?></p>
+        <div class="blt-card">
+            <div class="blt-card-header">
+                <h2><?php esc_html_e( 'Test Authentication', 'blt-m365-wp-sso' ); ?></h2>
+                <p><?php esc_html_e( 'Verify that your saved credentials are accepted by Microsoft. This runs a server-side token request against your tenant and changes nothing.', 'blt-m365-wp-sso' ); ?></p>
+            </div>
+            <div class="blt-card-body">
             <p>
                 <button type="button" class="button button-secondary" id="blt-m365-sso-test-btn"><?php esc_html_e( 'Test Authentication', 'blt-m365-wp-sso' ); ?></button>
                 <span class="spinner" id="blt-m365-sso-test-spinner"></span>
             </p>
             <div id="blt-m365-sso-test-result" class="m365-sso-test-result" role="status" aria-live="polite"></div>
+            </div>
         </div>
         <?php endif; ?>
         <?php
@@ -466,94 +520,107 @@ class BLT_M365_SSO_Admin {
         <form method="post" action="options.php">
             <?php settings_fields( self::OPTION_GROUP ); ?>
 
-            <div class="m365-sso-card">
-                <h2><?php esc_html_e( 'Login Integration', 'blt-m365-wp-sso' ); ?></h2>
+            <div class="blt-card">
+                <div class="blt-card-header">
+                    <h2><?php esc_html_e( 'Login Integration', 'blt-m365-wp-sso' ); ?></h2>
+                </div>
+                <div class="blt-card-body">
 
-                <table class="form-table" role="presentation">
-                    <tr>
-                        <th scope="row"><?php esc_html_e( 'Add to WordPress Login', 'blt-m365-wp-sso' ); ?></th>
-                        <td>
-                            <label>
+                    <div class="blt-field">
+                        <div class="blt-field-label"><?php esc_html_e( 'Add to WordPress Login', 'blt-m365-wp-sso' ); ?></div>
+                        <div>
+                            <label class="blt-toggle">
                                 <input type="checkbox" name="m365_sso_add_to_login" value="1"
                                     <?php checked( get_option( 'm365_sso_add_to_login', '1' ), '1' ); ?> />
-                                <?php esc_html_e( 'Append the "Login with Microsoft 365" button to all WordPress login forms.', 'blt-m365-wp-sso' ); ?>
+                                <span class="blt-toggle-track" aria-hidden="true"><span class="blt-toggle-thumb"></span></span>
+                                <span class="blt-toggle-text">
+                                    <span class="blt-toggle-label"><?php esc_html_e( 'Append the "Login with Microsoft 365" button to all WordPress login forms.', 'blt-m365-wp-sso' ); ?></span>
+                                </span>
                             </label>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><?php esc_html_e( 'Auto-redirect after login', 'blt-m365-wp-sso' ); ?></th>
-                        <td>
-                            <label>
+                        </div>
+                    </div>
+                    <div class="blt-field">
+                        <div class="blt-field-label"><?php esc_html_e( 'Auto-redirect after login', 'blt-m365-wp-sso' ); ?></div>
+                        <div>
+                            <label class="blt-toggle">
                                 <input type="checkbox" name="m365_sso_auto_redirect" value="1"
                                     <?php checked( get_option( 'm365_sso_auto_redirect', '1' ), '1' ); ?> />
-                                <?php esc_html_e( 'When a user is sent to the login page from a restricted page, return them to that page after signing in.', 'blt-m365-wp-sso' ); ?>
+                                <span class="blt-toggle-track" aria-hidden="true"><span class="blt-toggle-thumb"></span></span>
+                                <span class="blt-toggle-text">
+                                    <span class="blt-toggle-label"><?php esc_html_e( 'When a user is sent to the login page from a restricted page, return them to that page after signing in.', 'blt-m365-wp-sso' ); ?></span>
+                                </span>
                             </label>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">
-                            <label for="m365_sso_button_text"><?php esc_html_e( 'Button Text', 'blt-m365-wp-sso' ); ?></label>
-                        </th>
-                        <td>
+                        </div>
+                    </div>
+                    <div class="blt-field">
+                        <div class="blt-field-label"><label for="m365_sso_button_text"><?php esc_html_e( 'Button Text', 'blt-m365-wp-sso' ); ?></label></div>
+                        <div>
                             <input type="text" id="m365_sso_button_text" name="m365_sso_button_text"
                                    value="<?php echo esc_attr( get_option( 'm365_sso_button_text', 'Login with Microsoft 365' ) ); ?>"
                                    class="regular-text" />
-                            <p class="description"><?php esc_html_e( 'Text displayed on the SSO login button.', 'blt-m365-wp-sso' ); ?></p>
-                        </td>
-                    </tr>
-                </table>
+                            <p class="blt-field-desc"><?php esc_html_e( 'Text displayed on the SSO login button.', 'blt-m365-wp-sso' ); ?></p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="m365-sso-card">
-                <h2><?php esc_html_e( 'User Management', 'blt-m365-wp-sso' ); ?></h2>
+            <div class="blt-card">
+                <div class="blt-card-header">
+                    <h2><?php esc_html_e( 'User Management', 'blt-m365-wp-sso' ); ?></h2>
+                </div>
+                <div class="blt-card-body">
 
-                <table class="form-table" role="presentation">
-                    <tr>
-                        <th scope="row"><?php esc_html_e( 'Auto-create Users', 'blt-m365-wp-sso' ); ?></th>
-                        <td>
-                            <label>
+                    <div class="blt-field">
+                        <div class="blt-field-label"><?php esc_html_e( 'Auto-create Users', 'blt-m365-wp-sso' ); ?></div>
+                        <div>
+                            <label class="blt-toggle">
                                 <input type="checkbox" name="m365_sso_create_users" value="1"
                                     <?php checked( get_option( 'm365_sso_create_users', '1' ), '1' ); ?> />
-                                <?php esc_html_e( 'Automatically create a WordPress account when a new Microsoft 365 user signs in.', 'blt-m365-wp-sso' ); ?>
+                                <span class="blt-toggle-track" aria-hidden="true"><span class="blt-toggle-thumb"></span></span>
+                                <span class="blt-toggle-text">
+                                    <span class="blt-toggle-label"><?php esc_html_e( 'Automatically create a WordPress account when a new Microsoft 365 user signs in.', 'blt-m365-wp-sso' ); ?></span>
+                                </span>
                             </label>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">
-                            <label for="m365_sso_default_role"><?php esc_html_e( 'Default Role', 'blt-m365-wp-sso' ); ?></label>
-                        </th>
-                        <td>
+                        </div>
+                    </div>
+                    <div class="blt-field">
+                        <div class="blt-field-label"><label for="m365_sso_default_role"><?php esc_html_e( 'Default Role', 'blt-m365-wp-sso' ); ?></label></div>
+                        <div>
                             <select id="m365_sso_default_role" name="m365_sso_default_role">
                                 <?php wp_dropdown_roles( get_option( 'm365_sso_default_role', 'subscriber' ) ); ?>
                             </select>
-                            <p class="description"><?php esc_html_e( 'WordPress role assigned to newly created users.', 'blt-m365-wp-sso' ); ?></p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">
-                            <label for="m365_sso_allowed_domains"><?php esc_html_e( 'Allowed Email Domains', 'blt-m365-wp-sso' ); ?></label>
-                        </th>
-                        <td>
+                            <p class="blt-field-desc"><?php esc_html_e( 'WordPress role assigned to newly created users.', 'blt-m365-wp-sso' ); ?></p>
+                        </div>
+                    </div>
+                    <div class="blt-field">
+                        <div class="blt-field-label"><label for="m365_sso_allowed_domains"><?php esc_html_e( 'Allowed Email Domains', 'blt-m365-wp-sso' ); ?></label></div>
+                        <div>
                             <textarea id="m365_sso_allowed_domains" name="m365_sso_allowed_domains"
                                       rows="3" class="large-text code"
                                       placeholder="example.com, contoso.com"><?php echo esc_textarea( get_option( 'm365_sso_allowed_domains', '' ) ); ?></textarea>
-                            <p class="description"><?php esc_html_e( 'Optional. Restrict sign-in to these email domains (comma or space separated). Leave empty to allow any account returned by your Azure app.', 'blt-m365-wp-sso' ); ?></p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><?php esc_html_e( 'Sync Profile Photo', 'blt-m365-wp-sso' ); ?></th>
-                        <td>
-                            <label>
+                            <p class="blt-field-desc"><?php esc_html_e( 'Optional. Restrict sign-in to these email domains (comma or space separated). Leave empty to allow any account returned by your Azure app.', 'blt-m365-wp-sso' ); ?></p>
+                        </div>
+                    </div>
+                    <div class="blt-field">
+                        <div class="blt-field-label"><?php esc_html_e( 'Sync Profile Photo', 'blt-m365-wp-sso' ); ?></div>
+                        <div>
+                            <label class="blt-toggle">
                                 <input type="checkbox" name="m365_sso_sync_photo" value="1"
                                     <?php checked( get_option( 'm365_sso_sync_photo', '1' ), '1' ); ?> />
-                                <?php esc_html_e( 'Use the user\'s Microsoft profile photo as their WordPress avatar.', 'blt-m365-wp-sso' ); ?>
+                                <span class="blt-toggle-track" aria-hidden="true"><span class="blt-toggle-thumb"></span></span>
+                                <span class="blt-toggle-text">
+                                    <span class="blt-toggle-label"><?php esc_html_e( 'Use the user\'s Microsoft profile photo as their WordPress avatar.', 'blt-m365-wp-sso' ); ?></span>
+                                </span>
                             </label>
-                            <p class="description"><?php esc_html_e( 'Disable this if sign-in is slow or times out — some hosts process images slowly.', 'blt-m365-wp-sso' ); ?></p>
-                        </td>
-                    </tr>
-                </table>
+                            <p class="blt-field-desc"><?php esc_html_e( 'Disable this if sign-in is slow or times out — some hosts process images slowly.', 'blt-m365-wp-sso' ); ?></p>
+                        </div>
+                    </div>
 
-                <?php submit_button( __( 'Save Options', 'blt-m365-wp-sso' ) ); ?>
+                </div>
+            </div>
+
+            <div class="blt-settings-footer">
+                <?php submit_button( __( 'Save Options', 'blt-m365-wp-sso' ), 'primary blt-save-button', 'submit', false ); ?>
             </div>
         </form>
         <?php
@@ -564,30 +631,34 @@ class BLT_M365_SSO_Admin {
      */
     private function render_shortcode_tab() {
         ?>
-        <div class="m365-sso-card">
-            <h2><?php esc_html_e( 'Shortcode Usage', 'blt-m365-wp-sso' ); ?></h2>
-            <p><?php esc_html_e( 'Use the shortcode below to place a Microsoft 365 login button anywhere - pages, posts, widgets, or theme templates.', 'blt-m365-wp-sso' ); ?></p>
+        <div class="blt-card">
+            <div class="blt-card-header">
+                <h2><?php esc_html_e( 'Shortcode Usage', 'blt-m365-wp-sso' ); ?></h2>
+                <p><?php esc_html_e( 'Use the shortcode below to place a Microsoft 365 login button anywhere - pages, posts, widgets, or theme templates.', 'blt-m365-wp-sso' ); ?></p>
+            </div>
+            <div class="blt-card-body">
 
             <h3><?php esc_html_e( 'Basic Usage', 'blt-m365-wp-sso' ); ?></h3>
-            <code class="m365-sso-copy-box">[m365_login]</code>
-            <p class="description"><?php esc_html_e( 'Displays a login button using the default button text from the Options tab.', 'blt-m365-wp-sso' ); ?></p>
+            <code class="blt-code">[m365_login]</code>
+            <p class="blt-field-desc"><?php esc_html_e( 'Displays a login button using the default button text from the Options tab.', 'blt-m365-wp-sso' ); ?></p>
 
             <h3><?php esc_html_e( 'Custom Button Text', 'blt-m365-wp-sso' ); ?></h3>
-            <code class="m365-sso-copy-box">[m365_login text="Login with your company account"]</code>
+            <code class="blt-code">[m365_login text="Login with your company account"]</code>
 
             <h3><?php esc_html_e( 'Custom Redirect After Login', 'blt-m365-wp-sso' ); ?></h3>
-            <code class="m365-sso-copy-box">[m365_login redirect="/members/dashboard"]</code>
-            <p class="description"><?php esc_html_e( 'By default the button returns to the current page. Use the redirect attribute to override this.', 'blt-m365-wp-sso' ); ?></p>
+            <code class="blt-code">[m365_login redirect="/members/dashboard"]</code>
+            <p class="blt-field-desc"><?php esc_html_e( 'By default the button returns to the current page. Use the redirect attribute to override this.', 'blt-m365-wp-sso' ); ?></p>
 
             <h3><?php esc_html_e( 'Custom CSS Class', 'blt-m365-wp-sso' ); ?></h3>
-            <code class="m365-sso-copy-box">[m365_login class="my-custom-class"]</code>
+            <code class="blt-code">[m365_login class="my-custom-class"]</code>
 
             <h3><?php esc_html_e( 'Logged-in Message', 'blt-m365-wp-sso' ); ?></h3>
-            <code class="m365-sso-copy-box">[m365_login logged_in_text="You are signed in."]</code>
-            <p class="description"><?php esc_html_e( 'Text shown when the user is already logged in. Leave empty to hide the button for logged-in users.', 'blt-m365-wp-sso' ); ?></p>
+            <code class="blt-code">[m365_login logged_in_text="You are signed in."]</code>
+            <p class="blt-field-desc"><?php esc_html_e( 'Text shown when the user is already logged in. Leave empty to hide the button for logged-in users.', 'blt-m365-wp-sso' ); ?></p>
 
             <h3><?php esc_html_e( 'PHP Template Usage', 'blt-m365-wp-sso' ); ?></h3>
-            <code class="m365-sso-copy-box">&lt;?php echo do_shortcode( '[m365_login]' ); ?&gt;</code>
+            <code class="blt-code">&lt;?php echo do_shortcode( '[m365_login]' ); ?&gt;</code>
+            </div>
         </div>
         <?php
     }
@@ -596,74 +667,97 @@ class BLT_M365_SSO_Admin {
      * Updates tab: GitHub update source and developer notes.
      */
     private function render_updates_tab() {
-        $updater       = new BLT_M365_SSO_Updater();
+        $updater        = new BLT_M365_SSO_Updater();
         $token_constant = $updater->token_is_constant();
+
+        // The checker built during load, if it was built at all (the library is
+        // skipped when it is missing). Only read from here.
+        $checker    = $updater->get_checker();
+        $last_check = $checker ? BLT_Family_Updates::last_check_time( $checker ) : 0;
         ?>
         <form method="post" action="options.php">
             <?php settings_fields( self::GROUP_UPDATES ); ?>
 
-            <div class="m365-sso-card">
-                <h2><?php esc_html_e( 'Automatic Updates', 'blt-m365-wp-sso' ); ?></h2>
-                <p><?php esc_html_e( 'This plugin checks GitHub for new versions and shows updates on the WordPress Plugins screen, just like plugins from WordPress.org. Updates are powered by the Plugin Update Checker library.', 'blt-m365-wp-sso' ); ?></p>
+            <div class="blt-card">
+                <div class="blt-card-header">
+                    <h2><?php esc_html_e( 'Automatic Updates', 'blt-m365-wp-sso' ); ?></h2>
+                    <p><?php esc_html_e( 'This plugin checks GitHub for new versions and shows updates on the WordPress Plugins screen, just like plugins from WordPress.org. Updates are powered by the Plugin Update Checker library.', 'blt-m365-wp-sso' ); ?></p>
+                </div>
+                <div class="blt-card-body">
 
-                <table class="form-table" role="presentation">
-                    <tr>
-                        <th scope="row"><?php esc_html_e( 'Installed Version', 'blt-m365-wp-sso' ); ?></th>
-                        <td><code><?php echo esc_html( BLT_M365_SSO_VERSION ); ?></code></td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><?php esc_html_e( 'Update Source', 'blt-m365-wp-sso' ); ?></th>
-                        <td>
+                    <div class="blt-field">
+                        <div class="blt-field-label"><?php esc_html_e( 'Installed Version', 'blt-m365-wp-sso' ); ?></div>
+                        <div><code><?php echo esc_html( BLT_M365_SSO_VERSION ); ?></code></div>
+                    </div>
+                    <div class="blt-field">
+                        <div class="blt-field-label"><?php esc_html_e( 'Update Source', 'blt-m365-wp-sso' ); ?></div>
+                        <div>
                             <code><?php echo esc_html( $updater->get_repo() ); ?></code>
-                            <p class="description">
+                            <p class="blt-field-desc">
                                 <?php
                                 /* translators: %s: git branch name. */
                                 echo esc_html( sprintf( __( 'Tracking the "%s" branch.', 'blt-m365-wp-sso' ), $updater->get_active_branch() ) );
                                 ?>
                             </p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">
-                            <label for="m365_github_token"><?php esc_html_e( 'GitHub Access Token', 'blt-m365-wp-sso' ); ?></label>
-                        </th>
-                        <td>
+                        </div>
+                    </div>
+                    <div class="blt-field">
+                        <div class="blt-field-label"><label for="m365_github_token"><?php esc_html_e( 'GitHub Access Token', 'blt-m365-wp-sso' ); ?></label></div>
+                        <div>
                             <?php if ( $token_constant ) : ?>
-                                <p class="description"><?php esc_html_e( 'A token is defined via the BLT_M365_SSO_GITHUB_TOKEN constant in wp-config.php and will be used for update checks.', 'blt-m365-wp-sso' ); ?></p>
+                                <p class="blt-field-desc"><?php esc_html_e( 'A token is defined via the BLT_M365_SSO_GITHUB_TOKEN constant in wp-config.php and will be used for update checks.', 'blt-m365-wp-sso' ); ?></p>
                             <?php else : ?>
                                 <input type="password" id="m365_github_token" name="m365_github_token"
                                        value="<?php echo esc_attr( get_option( 'm365_github_token', '' ) ); ?>"
                                        class="regular-text" autocomplete="off" />
-                                <p class="description"><?php esc_html_e( 'Optional. Only required if the GitHub repository is private. Use a fine-grained token with read-only "Contents" access. For better security, you may instead define BLT_M365_SSO_GITHUB_TOKEN in wp-config.php.', 'blt-m365-wp-sso' ); ?></p>
+                                <p class="blt-field-desc"><?php esc_html_e( 'Optional. Only required if the GitHub repository is private. Use a fine-grained token with read-only "Contents" access. For better security, you may instead define BLT_M365_SSO_GITHUB_TOKEN in wp-config.php.', 'blt-m365-wp-sso' ); ?></p>
                             <?php endif; ?>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><?php esc_html_e( 'Check for Updates', 'blt-m365-wp-sso' ); ?></th>
-                        <td>
-                            <a href="<?php echo esc_url( admin_url( 'plugins.php' ) ); ?>" class="button button-secondary"><?php esc_html_e( 'Open Plugins screen', 'blt-m365-wp-sso' ); ?></a>
-                            <p class="description"><?php esc_html_e( 'WordPress checks for updates automatically. To check immediately, use the "Check for updates" link next to this plugin on the Plugins screen.', 'blt-m365-wp-sso' ); ?></p>
-                        </td>
-                    </tr>
-                </table>
+                        </div>
+                    </div>
+                    <div class="blt-field">
+                        <div class="blt-field-label"><?php esc_html_e( 'Check for Updates', 'blt-m365-wp-sso' ); ?></div>
+                        <div>
+                            <?php
+                            // Manual checks always run immediately; the automatic
+                            // check happens once a day, at midnight site time.
+                            ?>
+                            <a href="<?php echo esc_url( BLT_Family_Updates::check_now_url( BLT_M365_SSO_Updater::CHECKER_SLUG ) ); ?>" class="button button-secondary"><?php esc_html_e( 'Check for Updates', 'blt-m365-wp-sso' ); ?></a>
+                            <p class="blt-field-desc">
+                                <?php esc_html_e( 'The automatic check runs once a day, at midnight site time. This link checks straight away.', 'blt-m365-wp-sso' ); ?>
+                                <?php if ( $last_check ) : ?>
+                                    <br />
+                                    <?php
+                                    /* translators: %s: human-readable time difference, e.g. "5 hours". */
+                                    echo esc_html( sprintf( __( 'Last checked %s ago.', 'blt-m365-wp-sso' ), human_time_diff( $last_check ) ) );
+                                    ?>
+                                <?php endif; ?>
+                            </p>
+                        </div>
+                    </div>
 
-                <?php
-                if ( ! $token_constant ) {
-                    submit_button( __( 'Save Update Settings', 'blt-m365-wp-sso' ) );
-                }
-                ?>
+                </div>
             </div>
 
-            <div class="m365-sso-card">
-                <h2><?php esc_html_e( 'For Developers: Automatic Version Bumping', 'blt-m365-wp-sso' ); ?></h2>
-                <p><?php esc_html_e( 'The repository ships with a git pre-commit hook that bumps the plugin version on every commit, so each push to the tracked branch is offered to sites as an update. To enable it once per clone:', 'blt-m365-wp-sso' ); ?></p>
-                <code class="m365-sso-copy-box">git config core.hooksPath .githooks</code>
-                <p class="description">
+            <?php if ( ! $token_constant ) : ?>
+            <div class="blt-settings-footer">
+                <?php submit_button( __( 'Save Update Settings', 'blt-m365-wp-sso' ), 'primary blt-save-button', 'submit', false ); ?>
+            </div>
+            <?php endif; ?>
+
+            <div class="blt-card">
+                <div class="blt-card-header">
+                    <h2><?php esc_html_e( 'For Developers: Automatic Version Bumping', 'blt-m365-wp-sso' ); ?></h2>
+                    <p><?php esc_html_e( 'The repository ships with a git pre-commit hook that bumps the plugin version on every commit, so each push to the tracked branch is offered to sites as an update. To enable it once per clone:', 'blt-m365-wp-sso' ); ?></p>
+                </div>
+                <div class="blt-card-body">
+                <code class="blt-code">git config core.hooksPath .githooks</code>
+                <p class="blt-field-desc">
                     <?php esc_html_e( 'The hook runs bin/bump-version.sh (patch level by default) and keeps the Version header, the BLT_M365_SSO_VERSION constant, and readme.txt in sync. Run "bash bin/bump-version.sh minor" or "major" for larger releases. Set BLT_M365_SSO_SKIP_BUMP=1 to skip a single commit.', 'blt-m365-wp-sso' ); ?>
                 </p>
-                <p class="description">
+                <p class="blt-field-desc">
                     <?php esc_html_e( 'Note: while tracking the "main" branch, the updater prefers GitHub Releases or tags if any exist, and otherwise uses the Version header on the branch. For commit-driven updates, do not publish Releases/tags; to use release-driven updates, publish a GitHub Release for each version.', 'blt-m365-wp-sso' ); ?>
                 </p>
+                </div>
             </div>
         </form>
         <?php

@@ -11,16 +11,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class BLT_M365_SSO_Auth {
 
-    /** @var string */
+    /** @var string|null Null until load_credentials() has run. */
     private $client_id;
 
-    /** @var string */
+    /** @var string|null Null until load_credentials() has run. */
     private $client_secret;
 
     /** @var string */
     private $redirect_uri;
 
-    /** @var string */
+    /** @var string|null Null until load_credentials() has run. */
     private $tenant_id;
 
     /** @var string Human-readable reason for the most recent token failure. */
@@ -30,10 +30,13 @@ class BLT_M365_SSO_Auth {
     const SCOPE = 'openid email profile https://graph.microsoft.com/User.Read';
 
     public function init() {
-        $this->client_id     = get_option( 'm365_client_id', '' );
-        $this->client_secret = get_option( 'm365_client_secret', '' );
-        $this->tenant_id     = get_option( 'm365_tenant_id', '' );
-        $this->redirect_uri  = self::get_redirect_uri();
+        // Credentials are resolved on first use, not here: init() runs during
+        // plugin load, and the shared BLT store is not elected until
+        // plugins_loaded. Reading now would make the shared-store fallback in
+        // resolve_credentials() a no-op on this path while still applying on
+        // the admin/AJAX path, so the two would disagree about whether the
+        // plugin is configured. Every consumer below runs on `init` or later.
+        $this->redirect_uri = self::get_redirect_uri();
 
         // Handle the OAuth callback early.
         add_action( 'init', array( $this, 'handle_m365_login' ) );
@@ -63,7 +66,95 @@ class BLT_M365_SSO_Auth {
      * @return bool
      */
     public function is_configured() {
+        $this->load_credentials();
+
         return $this->client_id && $this->client_secret && $this->tenant_id;
+    }
+
+    /**
+     * Resolve this instance's credentials once, on first use.
+     *
+     * @return void
+     */
+    private function load_credentials() {
+        if ( null !== $this->client_id ) {
+            return;
+        }
+
+        $credentials = self::resolve_credentials();
+
+        $this->client_id     = $credentials['client_id'];
+        $this->client_secret = $credentials['client_secret'];
+        $this->tenant_id     = $credentials['tenant_id'];
+    }
+
+    /**
+     * Resolve the Azure app registration credentials, field by field.
+     *
+     * The single resolution point for all three values. Both the sign-in path
+     * and test_credentials() read through here, so they can never disagree
+     * about whether the plugin is configured.
+     *
+     * Each field falls back to the shared BLT store only after this plugin's
+     * own option has come back empty, and the shared store itself returns
+     * nothing unless the site owner opted this plugin into the 'microsoft'
+     * group. Nothing here is written back to the plugin's own options.
+     *
+     * Scope trap on client_id / client_secret: this plugin signs users in with
+     * a delegated app registration, which carries no OnlineMeetings
+     * permission. Sharing the same app ID and secret with a BLT plugin that
+     * creates Teams meetings yields 403 Authorization_RequestDenied on meeting
+     * creation, while both plugins' is_configured() checks — which only test
+     * that the strings are non-empty — still report green. Share the app pair
+     * only when one registration genuinely covers both uses. tenant_id is the
+     * safe one: it is unambiguously a single value per site.
+     *
+     * @return array Client ID, client secret, and tenant ID, in that order.
+     */
+    /**
+     * Whether all three Azure credentials resolve, wherever they come from.
+     *
+     * Exposed so the settings screen answers the same question the sign-in path
+     * does. Reading the three m365_* options directly there would report "Not
+     * Configured" on a site whose credentials resolve from the shared BLT
+     * family store — sign-in would work while the screen said it could not, and
+     * the Test Authentication card (gated on that answer) would be hidden
+     * exactly when an admin most needs it.
+     *
+     * @return bool
+     */
+    public static function credentials_configured() {
+        $credentials = self::resolve_credentials();
+
+        return '' !== $credentials['client_id']
+            && '' !== $credentials['client_secret']
+            && '' !== $credentials['tenant_id'];
+    }
+
+    private static function resolve_credentials() {
+        $client_id     = (string) get_option( 'm365_client_id', '' );
+        $client_secret = (string) get_option( 'm365_client_secret', '' );
+        $tenant_id     = (string) get_option( 'm365_tenant_id', '' );
+
+        if ( class_exists( 'BLT_Family' ) ) {
+            if ( '' === $client_id ) {
+                $client_id = (string) BLT_Family::get( 'blt-m365-wp-sso', 'microsoft', 'client_id' );
+            }
+
+            if ( '' === $client_secret ) {
+                $client_secret = (string) BLT_Family::get( 'blt-m365-wp-sso', 'microsoft', 'client_secret' );
+            }
+
+            if ( '' === $tenant_id ) {
+                $tenant_id = (string) BLT_Family::get( 'blt-m365-wp-sso', 'microsoft', 'tenant_id' );
+            }
+        }
+
+        return array(
+            'client_id'     => $client_id,
+            'client_secret' => $client_secret,
+            'tenant_id'     => $tenant_id,
+        );
     }
 
     /**
@@ -77,9 +168,10 @@ class BLT_M365_SSO_Auth {
      * @return array {ok: bool, message: string, detail?: string}
      */
     public function test_credentials() {
-        $client_id     = get_option( 'm365_client_id', '' );
-        $client_secret = get_option( 'm365_client_secret', '' );
-        $tenant_id     = get_option( 'm365_tenant_id', '' );
+        $credentials   = self::resolve_credentials();
+        $client_id     = $credentials['client_id'];
+        $client_secret = $credentials['client_secret'];
+        $tenant_id     = $credentials['tenant_id'];
 
         if ( ! $client_id || ! $client_secret || ! $tenant_id ) {
             return array(
@@ -392,6 +484,8 @@ class BLT_M365_SSO_Auth {
      */
     private function exchange_code_for_token( $code ) {
         $this->last_error = '';
+
+        $this->load_credentials();
 
         $token_url = sprintf(
             'https://login.microsoftonline.com/%s/oauth2/v2.0/token',

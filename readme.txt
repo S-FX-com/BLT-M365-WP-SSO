@@ -4,7 +4,7 @@ Tags: microsoft 365, azure, entra, sso, login
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 3.1.3
+Stable tag: 3.2.0
 License: GPL-2.0+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -78,6 +78,12 @@ Enable it once per clone:
 While the updater tracks the `main` branch it prefers GitHub Releases or tags if any exist, and otherwise reads the `Version:` header on the branch. For commit-driven updates, do not publish Releases/tags; for release-driven updates, publish a GitHub Release per version.
 
 == Changelog ==
+
+= 3.2.0 =
+* New: The shared BLT family settings layer. On a site running two or more BLT plugins, a connection can be entered once and shared — this plugin can read the Microsoft tenant ID, client ID and client secret, and its GitHub token, from the shared store. Nothing is shared until the site owner enables it on the BLT screen, and this plugin's own saved values always win.
+* New: The BLT mark replaces the generic padlock in the admin menu, and appears on the plugin's card in the update screens.
+* New: The admin screens now use the shared BLT design system, and the Updates tab has its own "Check for Updates" link with the time of the last check.
+* Changed: Automatic update checks now run at most once a day, at midnight site time. Manual checks still run immediately.
 
 = 3.1.3 =
 * Improved: The authorize request now sends `prompt=select_account`, so Microsoft always renders a fresh account picker. This avoids AADSTS90014 ("missing 'request' field") failures caused by stale interactive sign-in state in the browser.
