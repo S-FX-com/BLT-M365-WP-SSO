@@ -3,9 +3,9 @@
  * Plugin Name: BLT M365 WP SSO
  * Plugin URI: https://s-fx.com/plugins/blt-m365-wp-sso/
  * Description: Single Sign-On for WordPress with Microsoft 365 / Entra ID (Azure AD). One-click OAuth2 login, auto-inserted login button, shortcode, and self-updating from GitHub.
- * Version: 3.1.3
- * Author: S-FX.COM
- * Author URI: https://s-fx.com
+ * Version: 3.2.0
+ * Author: S-FX.com
+ * Author URI: https://www.s-fx.com
  * License: GPL-2.0+
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: blt-m365-wp-sso
@@ -22,11 +22,30 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'BLT_M365_SSO_VERSION', '3.1.3' );
+define( 'BLT_M365_SSO_VERSION', '3.2.0' );
 define( 'BLT_M365_SSO_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'BLT_M365_SSO_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'BLT_M365_SSO_PLUGIN_FILE', __FILE__ );
 define( 'BLT_M365_SSO_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
+
+/*
+ * The shared BLT family layer. Required during load, before anything that
+ * calls BLT_Family_Updates::apply() or BLT_Family::get() — the updater is
+ * built while this file is still executing, so the library has to be here
+ * first.
+ */
+require_once BLT_M365_SSO_PLUGIN_DIR . 'includes/blt-family/bootstrap.php';
+
+blt_family_register(
+    BLT_M365_SSO_PLUGIN_FILE,
+    array(
+        'name'    => 'BLT M365 WP SSO',
+        'slug'    => 'blt-m365-wp-sso',
+        'version' => BLT_M365_SSO_VERSION,
+        'menu'    => 'blt-m365-wp-sso',
+        'groups'  => array( 'github', 'microsoft' ),
+    )
+);
 
 require_once BLT_M365_SSO_PLUGIN_DIR . 'includes/class-blt-m365-sso.php';
 require_once BLT_M365_SSO_PLUGIN_DIR . 'includes/class-blt-m365-sso-admin.php';

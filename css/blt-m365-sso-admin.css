@@ -1,61 +1,38 @@
 /**
- * Admin settings page styles.
- * Matches the WordPress wp-admin aesthetic.
+ * Admin settings page styles for BLT M365 WP SSO.
  *
- * @package SingleSignOnWith365
+ * Loaded after assets/css/blt-design-system.css, which supplies the page
+ * shell, cards, field rows, toggles, badges, tabs and colour tokens. Only
+ * layout the shared components do not cover lives here.
+ *
+ * @package BltM365WpSso
  */
-
-/* Version label */
-.m365-sso-version {
-    color: #646970;
-    font-size: 13px;
-    margin: -8px 0 12px;
-}
-
-/* Status banner */
-.m365-sso-notice {
-    margin: 12px 0 16px;
-}
 
 /* Tab content area */
 .m365-sso-tab-content {
     margin-top: 20px;
 }
 
-/* Card container — mirrors WP postbox style */
-.m365-sso-card {
-    background: #fff;
-    border: 1px solid #c3c4c7;
-    border-radius: 4px;
-    padding: 20px 24px 24px;
-    margin-bottom: 20px;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
-}
-
-.m365-sso-card h2 {
-    margin-top: 0;
-    padding: 0;
-    font-size: 1.3em;
-    line-height: 1.4;
-}
-
-.m365-sso-card h3 {
+/* Headings inside a card body (the Setup Guide's step titles are separate) */
+.blt-ui .blt-card-body h3 {
     font-size: 1.05em;
     margin: 1.4em 0 0.5em;
 }
 
-/* Step blocks in setup guide */
+/* Step blocks in the Setup Guide */
 .m365-sso-step {
-    border-left: 3px solid #2271b1;
+    border-left: 3px solid var(--blt-primary, #2271b1);
     padding: 8px 16px 12px;
     margin: 16px 0;
-    background: #f6f7f7;
-    border-radius: 0 4px 4px 0;
+    background: var(--blt-surface-muted, #f6f7f7);
+    border-radius: 0 var(--blt-radius-sm, 4px) var(--blt-radius-sm, 4px) 0;
 }
 
-.m365-sso-step h3 {
+/* Scoped with .blt-ui to outrank `.blt-ui .blt-card-body h3` above — the step
+   blocks sit inside a card body, and a bare `.m365-sso-step h3` loses to it on
+   specificity, leaving every step title with an unwanted top margin. */
+.blt-ui .m365-sso-step h3 {
     margin-top: 0;
-    color: #1d2327;
 }
 
 .m365-sso-step ol,
@@ -65,21 +42,6 @@
 
 .m365-sso-step li {
     margin-bottom: 6px;
-}
-
-/* Copyable code box */
-.m365-sso-copy-box {
-    display: inline-block;
-    background: #f0f0f1;
-    border: 1px solid #c3c4c7;
-    border-radius: 3px;
-    padding: 4px 10px;
-    font-family: Consolas, Monaco, monospace;
-    font-size: 13px;
-    color: #1d2327;
-    word-break: break-all;
-    cursor: text;
-    user-select: all;
 }
 
 /* Test Authentication */
@@ -98,11 +60,11 @@
 }
 
 .m365-sso-test-testing {
-    color: #646970;
+    color: var(--blt-muted-fg, #646970);
     font-style: italic;
 }
 
 .m365-sso-test-detail {
-    color: #646970;
+    color: var(--blt-muted-fg, #646970);
     font-size: 12px;
 }
